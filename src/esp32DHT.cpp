@@ -56,8 +56,12 @@ void DHT::setup(uint8_t pin, rmt_channel_t channel) {
   rmt_driver_install(_channel, 400, 0);  // 400 words for ringbuffer containing pulse trains from DHT
   rmt_get_ringbuf_handle(_channel, &_ringBuf);
   xTaskCreate((TaskFunction_t)&_readSensor, "esp32DHT", 2048, this, 5, &_task);
-  pinMode(_pin, OUTPUT);
-  digitalWrite(_pin, HIGH);
+
+  // pinMode(_pin, OUTPUT);
+  // digitalWrite(_pin, HIGH);
+  ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_reset_pin((gpio_num_t)_pin));
+  ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_set_direction((gpio_num_t)_pin, GPIO_MODE_OUTPUT));
+  ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_set_level((gpio_num_t)_pin, 1));
 }
 
 void DHT::onData(esp32DHTInternals::OnData_CB callback) {
@@ -106,9 +110,11 @@ void DHT::_readSensor(DHT* instance) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     // give start signal to sensor
-    digitalWrite(instance->_pin, LOW);
+    //digitalWrite(instance->_pin, LOW);
+    ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_set_level((gpio_num_t)instance->_pin, 0));
     vTaskDelay(18);
-    pinMode(instance->_pin, INPUT);
+    //pinMode(instance->_pin, INPUT);
+    ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_set_direction((gpio_num_t)instance->_pin, GPIO_MODE_INPUT));
     rmt_rx_start(instance->_channel, 1);
     // rmt_set_pin is used untill platformio updates to latest Arduino core.
     // rmt_set_gpio(instance->_channel, RMT_MODE_RX, static_cast<gpio_num_t>(instance->_pin), false);  // reset after using pin as output
@@ -123,8 +129,10 @@ void DHT::_readSensor(DHT* instance) {
       instance->_status = 1;  // timeout error
     }
     rmt_rx_stop(instance->_channel);
-    pinMode(instance->_pin, OUTPUT);
-    digitalWrite(instance->_pin, HIGH);
+    //pinMode(instance->_pin, OUTPUT);
+    //digitalWrite(instance->_pin, HIGH);
+    ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_set_direction((gpio_num_t)instance->_pin, GPIO_MODE_OUTPUT));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_set_level((gpio_num_t)instance->_pin, 1));
 
     // return results
     instance->_tryCallback();

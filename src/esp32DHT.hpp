@@ -27,10 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern "C" {
   #include <freertos/FreeRTOS.h>
   #include <freertos/task.h>
-  #include <esp32-hal-gpio.h>
   #include <driver/rmt.h>
   #include <esp_timer.h>
 }
+#include <cmath>
 #include <functional>
 
 namespace esp32DHTInternals {
