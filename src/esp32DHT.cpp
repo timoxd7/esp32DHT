@@ -43,15 +43,21 @@ DHT::~DHT() {
 void DHT::setup(uint8_t pin, rmt_channel_t channel) {
   _pin = pin;
   _channel = channel;
-  rmt_config_t config{};
-  config.rmt_mode = RMT_MODE_RX;
-  config.channel = _channel;
-  config.gpio_num = static_cast<gpio_num_t>(_pin);
-  config.mem_block_num = 2;
-  config.rx_config.filter_en = 1;
-  config.rx_config.filter_ticks_thresh = 10;
-  config.rx_config.idle_threshold = 1000;
-  config.clk_div = RMT_CLK_DIV;
+
+  const rmt_config_t config{
+    .rmt_mode = RMT_MODE_RX,
+    .channel = _channel,
+    .gpio_num = static_cast<gpio_num_t>(_pin),
+    .clk_div = RMT_CLK_DIV,
+    .mem_block_num = 2,
+    .flags = 0,
+    .rx_config = {
+      .idle_threshold = 1000,
+      .filter_ticks_thresh = 10,
+      .filter_en = 1,
+    }
+  };
+
   rmt_config(&config);
   rmt_driver_install(_channel, 400, 0);  // 400 words for ringbuffer containing pulse trains from DHT
   rmt_get_ringbuf_handle(_channel, &_ringBuf);
