@@ -1,3 +1,4 @@
+// clang-format off
 /*
 
 Copyright 2018 Bert Melis
@@ -49,13 +50,18 @@ class DHT {
   void onError(esp32DHTInternals::OnError_CB callback);
   void read();
   const char* getError() const;
+  void setReadTimeout(const TickType_t timeout);
 
  protected:
   uint8_t _status;
   uint8_t _data[5];
 
  private:
-  static void _readSensor(DHT* instance);
+  // Block copy constructor and assignment
+  DHT(const DHT&);
+  DHT& operator=(const DHT&);
+
+  static void _readSensor(void* instanceIn);
   void _decode(rmt_item32_t* data, int numItems);
   void _tryCallback();
   virtual float _getTemperature() = 0;
@@ -66,8 +72,11 @@ class DHT {
   rmt_channel_t _channel;
   esp32DHTInternals::OnData_CB _onData;
   esp32DHTInternals::OnError_CB _onError;
+  StaticTask_t _taskBuf;
+  StackType_t _taskStack[4096];
   TaskHandle_t _task;
   RingbufHandle_t _ringBuf;
+  TickType_t _readTimeout;
 };
 
 class DHT11 : public DHT {

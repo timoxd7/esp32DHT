@@ -1,3 +1,4 @@
+// clang-format off
 /*
 
 Copyright 2018 Bert Melis
@@ -33,7 +34,8 @@ DHT::DHT() :
   _channel(RMT_CHANNEL_0),
   _onData(nullptr),
   _onError(nullptr),
-  _task(nullptr) {}
+  _task(nullptr),
+  _readTimeout(portMAX_DELAY) {}
 
 DHT::~DHT() {
   rmt_driver_uninstall(_channel);
@@ -58,10 +60,10 @@ void DHT::setup(uint8_t pin, rmt_channel_t channel) {
     }
   };
 
-  rmt_config(&config);
-  rmt_driver_install(_channel, 400, 0);  // 400 words for ringbuffer containing pulse trains from DHT
+  ESP_ERROR_CHECK_WITHOUT_ABORT(rmt_config(&config));
+  ESP_ERROR_CHECK_WITHOUT_ABORT(rmt_driver_install(_channel, 400, 0));  // 400 words for ringbuffer containing pulse trains from DHT
   rmt_get_ringbuf_handle(_channel, &_ringBuf);
-  xTaskCreate((TaskFunction_t)&_readSensor, "esp32DHT", 2048, this, 5, &_task);
+  xTaskCreateStaticPinnedToCore(&_readSensor, "esp32DHT", sizeof(_taskStack), this, 6, _taskStack, &_taskBuf, PRO_CPU_NUM);
 
   // pinMode(_pin, OUTPUT);
   // digitalWrite(_pin, HIGH);
@@ -101,7 +103,14 @@ const char* DHT::getError() const {
   return "UNKNOWN";
 }
 
-void DHT::_readSensor(DHT* instance) {
+void DHT::setReadTimeout(const TickType_t timeout) {
+  _readTimeout = timeout;
+}
+
+void DHT::_readSensor(void* instanceIn) {
+  // Cast instance to DHT
+  DHT* instance = static_cast<DHT*>(instanceIn);
+
   size_t rx_size = 0;
   while (1) {
     // reset
@@ -113,7 +122,7 @@ void DHT::_readSensor(DHT* instance) {
     instance->_status = 0;
 
     // block and wait for notification
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    ulTaskNotifyTake(pdTRUE, instance->_readTimeout);
 
     // give start signal to sensor
     //digitalWrite(instance->_pin, LOW);
